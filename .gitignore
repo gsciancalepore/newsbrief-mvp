@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+# Environment
+.env
+.env.local
+.env.test
+*.log
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+# OS
+.DS_Store
+Thumbs.db
+# Database
+*.db
+*.sqlite3
+# Celery
+celerybeat-schedule
+celerybeat.pid
