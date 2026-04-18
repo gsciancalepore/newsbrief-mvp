@@ -137,9 +137,9 @@ Para profundizar en las decisiones de diseño, revisa los siguientes documentos:
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md): Justificación técnica de patrones y stack.
 ---
 👤 Autor
-Gabbb  
+Gabriel Sciancalepore  
 Software Architect & Backend Developer
-- 🌐 [LinkedIn](https://linkedin.com/in/gabbb)
+- 🌐 [LinkedIn](https://linkedin.com/in/gabriel-sciancalepore-890328167)
 - 💻 [GitHub](https://github.com/gsciancalepore)
 ---
 💡 Nota para el Entrevistador
