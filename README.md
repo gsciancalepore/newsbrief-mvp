@@ -72,47 +72,48 @@ tests/
 - Idempotencia: Las tareas de Celery están diseñadas para ser seguras ante reintentos.
 ---
 
-## 🛠️ Instalación y Ejecución Local
+## 🐳 Ejecución con Docker (Recomendado)
+
+Este proyecto está completamente orquestado con Docker Compose. No es necesario instalar Python ni dependencias localmente.
 
 ### Prerrequisitos
-
-- Docker & Docker Compose
-- Python 3.11+ (para desarrollo local sin Docker)
-- Una API Key de Google Gemini
+- Docker & Docker Compose instalados.
+- Una API Key de Google Gemini.
 
 ### Pasos Rápidos
-1. Clonar el repositorio:
-      git clone https://github.com/gsciancalepore/newsbrief-mvp.git
+
+1. **Clonar y Configurar Entorno:**
+   ```bash
+   git clone https://github.com/gsciancalepore/newsbrief-mvp.git
    cd newsbrief-mvp
-   
-2. Configurar Variables de Entorno:
-   Crea un archivo .env basado en .env.example:
-      GEMINI_API_KEY=tu_api_key_aqui
-   DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/newsbrief_db
-   REDIS_URL=redis://localhost:6379/0
-   SENDER_EMAIL=tu_email@gmail.com
-   SENDER_PASSWORD=tu_app_password
-   
-3. Levantar Infraestructura (Docker):
-      docker-compose up -d postgres redis
-   
-4. Instalar Dependencias (venv):
-      python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   
-5. Ejecutar Tests:
-      pytest -v
-   
-6. Iniciar Servicios:
-   
-      # Terminal 1: API
-   uvicorn src.interfaces.api.main:app --reload
-   # Terminal 2: Worker Celery
-   celery -A src.infrastructure.celery.config worker --loglevel=info
-   # Terminal 3: Scheduler
-   celery -A src.infrastructure.celery.config beat --loglevel=info
-   
+   cp .env.example .env
+   ```
+   Edita `.env` y agrega tu `GEMINI_API_KEY` real.
+
+2. **Levantar el Sistema Completo:**
+   ```bash
+   docker compose up --build
+   ```
+
+3. **Verificar Estado:**
+   - API Docs: http://localhost:8000/docs
+   - Logs en tiempo real: `docker compose logs -f api`
+
+4. **Detener y Limpiar:**
+   ```bash
+   docker compose down -v
+   ```
+
+### Nota Técnica
+El healthcheck de PostgreSQL está configurado para especificar explícitamente la base de datos (`-d ${DB_NAME}`) para evitar conflictos de resolución de nombres por defecto en entornos Alpine.
+
+Las migraciones de base de datos se ejecutan automáticamente al iniciar la API mediante Alembic. No es necesario ejecutar migraciones manualmente.
+
+### 🔧 Desarrollo Avanzado (Sin Docker)
+*Solo para contributors que necesiten debugging directo.*
+
+Para desarrollo avanzado o debugging sin contenedores, consulta la guía de configuración manual en nuestra Documentación Interna.
+
 ---
 
 ### 🧪 Testing Strategy
@@ -143,4 +144,4 @@ Software Architect & Backend Developer
 - 💻 [GitHub](https://github.com/gsciancalepore)
 ---
 💡 Nota para el Entrevistador
-Este proyecto fue construido intencionalmente para demostrar dominio en arquitecturas empresariales modernas. Si tienes preguntas sobre por qué se eligió Clean Architecture sobre un monolito simple, o cómo se maneja la inyección de dependencias en un entorno asíncrono, ¡estaré encantado de discutirlas!
+Este proyecto fue construitdo intencionalmente para demostrar dominio en arquitecturas empresariales modernas. Si tienes preguntas sobre por qué se eligió Clean Architecture sobre un monolito simple, o cómo se maneja la inyección de dependencias en un entorno asíncrono, ¡estaré encantado de discutirlas!

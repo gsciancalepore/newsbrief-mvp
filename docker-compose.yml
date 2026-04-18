@@ -1,80 +1,75 @@
+version: '3.8'
+
 services:
-  # Base de Datos
-  postgres:
-    image: postgres:16-alpine
+  db:
+    image: postgres:15-alpine
     environment:
-      POSTGRES_DB: newsbrief_db
-      POSTGRES_USER: newsbrief_user
-      POSTGRES_PASSWORD: secret_password
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DB_USER:-newsbrief_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret_password}
+      POSTGRES_DB: ${DB_NAME:-newsbrief_db}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U newsbrief_user"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-newsbrief_user} -d ${DB_NAME:-newsbrief_db}"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
-  # Broker de Mensajes y Cache
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
 
-  # API FastAPI
   api:
-    build: .
-    command: uvicorn src.interfaces.api.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./src:/app/src
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://newsbrief_user:secret_password@postgres:5432/newsbrief_db
-      - REDIS_URL=redis://redis:6379/0
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY} # Usa la variable de tu sistema host
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-newsbrief_user}:${DB_PASSWORD:-secret_password}@db:5432/${DB_NAME:-newsbrief_db}
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
 
-  # Worker Celery (Procesamiento pesado)
   worker:
-    build: .
-    command: celery -A src.infrastructure.celery.config worker --loglevel=info
-    volumes:
-      - ./src:/app/src
-    environment:
-      - DATABASE_URL=postgresql://newsbrief_user:secret_password@postgres:5432/newsbrief_db
-      - REDIS_URL=redis://redis:6379/0
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY} # Usa la variable de tu sistema host
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     depends_on:
-      - postgres
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-newsbrief_user}:${DB_PASSWORD:-secret_password}@db:5432/${DB_NAME:-newsbrief_db}
+      - REDIS_URL=redis://redis:6379/0
 
-  # Celery Beat (Scheduler para tareas periódicas)
   beat:
-    build: .
-    command: celery -A src.infrastructure.celery.config beat --loglevel=info
-    volumes:
-      - ./src:/app/src
-    environment:
-      - DATABASE_URL=postgresql://newsbrief_user:secret_password@postgres:5432/newsbrief_db
-      - REDIS_URL=redis://redis:6379/0
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: celery -A src.infrastructure.celery.config.app beat --loglevel=info
     depends_on:
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-newsbrief_user}:${DB_PASSWORD:-secret_password}@db:5432/${DB_NAME:-newsbrief_db}
+      - REDIS_URL=redis://redis:6379/0
 
 volumes:
-  postgres_data:
-  redis_data:
+  pgdata:
