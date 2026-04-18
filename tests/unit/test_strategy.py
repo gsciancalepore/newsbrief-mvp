@@ -12,10 +12,10 @@ from src.application.interfaces.notification_service import NotificationService
 from datetime import datetime
 
 @pytest.mark.asyncio
-async def test_generate_briefing_uses_strategy():
+async def test_generate_briefing_uses_strategy(mock_briefing_repo):
     # Mocks
     mock_pref_repo = AsyncMock()
-    mock_briefing_repo = AsyncMock()
+    # mock_briefing_repo viene del fixture en conftest.py
     
     # Configurar preferencia mock
     user_id = uuid4()

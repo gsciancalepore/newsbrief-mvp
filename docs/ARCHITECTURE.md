@@ -139,3 +139,44 @@ El sistema de notificaciones sigue el patrón Adapter para permitir intercambio 
 - Para **desarrollo local**: Simulación sin enviar emails reales
 - Para **producción**: Configuración SMTP real
 - Para **futuro**: Integración con SendGrid, AWS SES, etc.
+
+---
+
+## Resiliencia y Consistencia
+
+NewsBrief implementa patrones de resiliencia para garantizar consistencia en operaciones asíncronas.
+
+### Idempotencia
+
+- Verificación de briefing existente en las últimas 24 horas antes de generar
+- Evita costos duplicados de IA y spam de emails
+- Implementado en `GenerateDailyBriefingHandler` via `get_latest_completed()`
+
+### Retry Automático en Celery
+
+- Tareas configuradas con `max_retries=3` y `default_retry_delay=60`
+- Errores transitorios (DB, IA, SMTP) se reintentan automáticamente
+- Decorador: `bind=True, autoretry_for=(Exception,), max_retries=3, default_retry_delay=60`
+
+### Environment Check
+
+| Environment | Comportamiento SMTP |
+|-------------|-------------------|
+| `production` | Credenciales obligatorias, lanza error si faltan |
+| `development` | Simulación, loguea contenido sin enviar |
+
+### Logging Detallado
+
+Cada paso del flujo de generación de briefing es logueado:
+- "Starting briefing generation for user {id}"
+- "Fetching news for topics: [...]"
+- "Summarizing {N} news items with tone '{tone}' via AI..."
+- "Saving briefing to DB (status=COMPLETED)"
+- "Sending email notification to {email}..."
+- "Briefing completed for user {id}"
+
+### Variables de Entorno
+
+| Variable | Descripción | Valor por defecto |
+|----------|-------------|------------------|
+| `ENVIRONMENT` | Modo de ejecución | `development` |

@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy import select
@@ -108,13 +109,32 @@ class SqlAlchemyBriefingRepository(BriefingRepository):
         if not db_briefing:
             return None
             
-        # Reconstruir la entidad de dominio
+        return self._map_to_entity(db_briefing)
+
+    async def get_latest_completed(self, user_id: UUID, hours: int = 24) -> Optional[Briefing]:
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+        
+        result = await self.session.execute(
+            select(BriefingModel)
+            .where(
+                BriefingModel.user_id == user_id,
+                BriefingModel.status == BriefingStatus.COMPLETED,
+                BriefingModel.created_at >= cutoff_time
+            )
+            .order_by(BriefingModel.created_at.desc())
+            .limit(1)
+        )
+        db_briefing = result.scalar_one_or_none()
+        
+        if not db_briefing:
+            return None
+            
+        return self._map_to_entity(db_briefing)
+
+    def _map_to_entity(self, db_briefing) -> Briefing:
         briefing = Briefing(user_id=db_briefing.user_id)
         briefing.id = db_briefing.id
         briefing.status = db_briefing.status
         briefing.created_at = db_briefing.created_at
-        
-        # Restaurar items manualmente (accediendo al atributo protegido para reconstrucción)
         briefing._items = db_briefing.items or []
-        
         return briefing

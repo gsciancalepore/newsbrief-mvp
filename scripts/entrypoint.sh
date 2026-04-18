@@ -41,9 +41,10 @@ done
 
 echo "[ENTRYPOINT] Database is ready!"
 
-# Run Alembic migrations
+# Run Alembic migrations (need sync driver, not asyncpg)
 echo "[ENTRYPOINT] Running database migrations..."
-alembic upgrade head
+DATABASE_URL_SYNC=$(echo "$DATABASE_URL" | sed 's|postgresql+asyncpg://|postgresql://|')
+DATABASE_URL=$DATABASE_URL_SYNC alembic upgrade head
 
 echo "[ENTRYPOINT] Migrations completed successfully!"
 

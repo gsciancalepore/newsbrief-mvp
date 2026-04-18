@@ -17,14 +17,25 @@ from src.application.services.news_fetcher_service import NewsFetcherService
 
 logger = logging.getLogger(__name__)
 
-@app.task(name="tasks.generate_daily_briefing_for_user")
-def generate_daily_briefing_task(user_id_str: str):
+@app.task(
+    name="tasks.generate_daily_briefing_for_user",
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True
+)
+def generate_daily_briefing_task(self, user_id_str: str):
     """
     Tarea asíncrona para generar el briefing de un usuario específico.
+    Con retry automático para errores transitorios.
     """
     user_id = UUID(user_id_str)
-    # Ejecutar el flujo asíncrono dentro de un event loop
-    asyncio.run(_process_briefing(user_id))
+    try:
+        asyncio.run(_process_briefing(user_id))
+    except Exception as e:
+        logger.error(f"Error en briefing para {user_id}, retry {self.request.retries}/3: {e}")
+        raise self.retry(exc=e)
 
 async def _process_briefing(user_id: UUID):
     # 1. Crear una sesión de DB nueva para esta tarea

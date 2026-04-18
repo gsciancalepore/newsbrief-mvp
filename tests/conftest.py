@@ -2,9 +2,11 @@ import pytest
 import pytest_asyncio
 import asyncio
 import os
+from unittest.mock import AsyncMock
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 from src.infrastructure.database.models import Base
+from src.domain.repositories.briefing_repository import BriefingRepository
 
 # URL de la BD de test (desde .env.test o hardcodeada)
 TEST_DATABASE_URL = os.getenv(
@@ -66,3 +68,13 @@ async def db_session():
     async with _test_session_maker() as session:
         yield session
         await session.rollback()
+
+@pytest.fixture
+def mock_briefing_repo():
+    """
+    Fixture que provee un mock del repositorio de briefings.
+    Por defecto, get_latest_completed retorna None (no hay briefing previo en 24h).
+    """
+    mock = AsyncMock(spec=BriefingRepository)
+    mock.get_latest_completed = AsyncMock(side_effect=lambda *args, **kwargs: None)
+    return mock
