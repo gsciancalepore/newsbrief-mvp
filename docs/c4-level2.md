@@ -6,50 +6,52 @@ C4Container
 
     Person(usuario, "Usuario Final", "Gestiona preferencias y recibe resúmenes")
 
-    Container_Boundary(app_boundary, "Aplicación Web (API)") {
-        Container(api_app, "NewsBrief API", "Python, FastAPI, Uvicorn", "Expone endpoints REST y valida requests.")
+    Container_Boundary(docker, "Docker Environment") {
+        Container_Boundary(app, "Application") {
+            Container(api, "NewsBrief API", "Python, FastAPI, Uvicorn", "Expone endpoints REST y valida requests")
+        }
+        
+        Container_Boundary(workers, "Async Processors") {
+            Container(worker, "Celery Worker", "Python, Celery", "Ejecuta tareas pesadas: Fetch, IA, Notify")
+            Container(beat, "Celery Beat", "Python, Celery", "Scheduler que dispara tareas periódicas (8 AM)")
+        }
+        
+        Container_Boundary(infra, "Infrastructure") {
+            ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Persistencia de Dominio (Users, Briefings)")
+            ContainerQueue(redis, "Redis", "Redis 7", "Message Broker para tareas Celery")
+        }
     }
 
-    Container_Boundary(worker_boundary, "Procesador Asíncrono") {
-        Container(worker_app, "Celery Worker", "Python, Celery", "Ejecuta tareas pesadas: Fetch, IA, Notify.")
-        Container(beat_app, "Celery Beat", "Python, Celery", "Scheduler que dispara tareas periódicas.")
-    }
+    System_Ext(gemini, "Google Gemini API", "LLM Service", "Generación de resúmenes con tono")
+    System_Ext(rss, "RSS Feeds", "External Data", "Fuentes de noticias (TechCrunch, etc.)")
+    System_Ext(smtp, "SMTP Server", "Email Service", "Envío de notificaciones (Gmail/SendGrid)")
 
-    Container_Boundary(infra_boundary, "Infraestructura de Datos") {
-        ContainerDb(db, "PostgreSQL", "PostgreSQL 16", "Persistencia de Dominio (Users, Briefings).")
-        ContainerQueue(queue, "Redis", "Redis 7", "Message Broker para tareas Celery.")
-    }
-
-    System_Ext(gemini, "Google Gemini API", "LLM Service", "Generación de resúmenes con tono.")
-    System_Ext(rss, "RSS Feeds", "External Data", "Fuentes de noticias (TechCrunch, etc.).")
-    System_Ext(smtp, "SMTP Server", "Email Service", "Envío de notificaciones (Gmail/SendGrid).")
-
-    Rel(usuario, api_app, "HTTPS/REST", "1. Configura preferencias")
+    Rel(usuario, api, "HTTPS/REST", "1. Configura preferencias")
     
-    Rel(api_app, queue, "Push Task", "2. Encola 'GenerateBriefing'")
-    Rel(beat_app, queue, "Push Task", "3. Encola tarea programada (8 AM)")
+    Rel(api, redis, "Push Task", "2. Encola 'GenerateBriefing'")
+    Rel(beat, redis, "Push Task", "3. Encola tarea programada (8 AM)")
     
-    Rel(worker_app, queue, "Pop Task", "4. Consume tareas")
+    Rel(worker, redis, "Pop Task", "4. Consume tareas")
     
-    Rel(worker_app, db, "SQL (AsyncPG)", "5. Lee Prefs / Guarda Briefing")
-    Rel(worker_app, rss, "HTTP GET", "6. Obtiene noticias crudas")
-    Rel(worker_app, gemini, "HTTPS/API", "7. Solicita resumen IA")
-    Rel(worker_app, smtp, "SMTP", "8. Envía email final")
+    Rel(worker, postgres, "SQL (AsyncPG)", "5. Lee Prefs / Guarda Briefing")
+    Rel(worker, rss, "HTTP GET", "6. Obtiene noticias crudas")
+    Rel(worker, gemini, "HTTPS/API", "7. Solicita resumen IA")
+    Rel(worker, smtp, "SMTP", "8. Envía email final")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
 
 ## Descripción del Diagrama
 
-### Contenedores (Unidades Ejecutables)
+### Contenedores Docker (Unidades Ejecutables)
 
-| Contenedor | Tecnología | Descripción |
-|-----------|-------------|-------------|
-| NewsBrief API | Python, FastAPI, Uvicorn | Expone endpoints REST y valida requests |
-| Celery Worker | Python, Celery | Ejecuta tareas pesadas: Fetch, IA, Notify |
-| Celery Beat | Python, Celery | Scheduler que dispara tareas periódicas |
-| PostgreSQL | PostgreSQL 16 | Persistencia de Dominio |
-| Redis | Redis 7 | Message Broker para tareas Celery |
+| Contenedor | Tecnología | Descripción | Ejecuta Migraciones |
+|------------|-------------|-------------|-------------------|
+| NewsBrief API | Python, FastAPI, Uvicorn | Expide endpoints REST y valida requests | ✅ Alembic (entrypoint.sh) |
+| Celery Worker | Python, Celery | Ejecuta tareas pesadas: Fetch, IA, Notify | ❌ |
+| Celery Beat | Python, Celery | Scheduler que dispara tareas periódicas | ❌ |
+| PostgreSQL | PostgreSQL 16 | Persistencia de Dominio | ❌ |
+| Redis | Redis 7 | Message Broker para tareas Celery | ❌ |
 
 ### Sistemas Externos
 
@@ -84,8 +86,15 @@ C4Container
 
 ## Notas Técnicas
 
-- **Contenedores C4**: Representan unidades ejecutables independientes (no componentes de código)
-- **Adapters**: Son clases Python que viven dentro del proceso del Worker, no son contenedores separados
-- **Celery**: El Worker consume tareas desde Redis (message broker), no directamente de la API
-- **Beat**: Scheduler que publica tareas periódicas a la cola de Redis
-- **Worker como Orquestador**: El Worker está diseñado como un componente orquestador. La separación interna en Adapters (Fetcher, Summarizer, Notifier) permite aplicar el patrón Strategy para futuras fuentes de datos sin modificar el flujo principal de Celery.
+### Alembic en Docker
+- **Las migraciones se ejecutan automáticamente** al iniciar el contenedor de la API mediante `entrypoint.sh`.
+- El script espera a que PostgreSQL esté disponible (`wait-for-db`) y luego ejecuta `alembic upgrade head`.
+- Una vez completadas las migraciones, inicia Uvicorn.
+- Este enfoque garantiza que el esquema de base de datos está siempre actualizado sin intervención manual.
+
+### Contenedores C4
+- Contenedores C4 representan unidades ejecutables independientes (procesos Docker).
+- Adapters (RSS Fetcher, Gemini Summarizer, Email Notifier) son clases Python dentro del proceso Worker.
+- Celery Worker consume tareas desde Redis (message broker), no directamente de la API.
+- Celery Beat publica tareas periódicas a la cola de Redis.
+- El Worker actúa como orquestador interno: Strategy Pattern permite intercambiar fuentes de datos sin modificar el flujo principal.

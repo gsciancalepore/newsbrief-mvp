@@ -14,6 +14,35 @@ NewsBrief es un sistema SaaS asíncrono diseñado para la curación automatizada
 | **PostgreSQL 16** | Base de datos relacional robusta con soporte JSONB. |
 | **Google Gemini** | LLM para resumen y adaptación de tono de noticias. |
 
+## Migraciones de Base de Datos
+
+NewsBrief utiliza **Alembic** para gestionar el esquema de base de datos de forma versionada.
+
+### Estrategia de Migraciones
+
+| Aspecto | Implementación |
+|---------|---------------|
+| **Herramienta** | Alembic |
+| **Ejecución** | Automática al iniciar API (Docker) |
+| **Script** | entrypoint.sh con wait-for-db + alembic upgrade head |
+| **Historial** | Versionado en alembic/versions/ |
+
+### Flujo de Inicio
+
+1. Docker Compose inicia el contenedor API
+2. entrypoint.sh espera a que PostgreSQL esté disponible (wait-for-db)
+3. Se ejecutan migraciones pendientes con `alembic upgrade head`
+4. Una vez migrado, inicia Uvicorn
+
+### Por qué Alembic?
+
+| Beneficio | Descripción |
+|----------|-------------|
+| Versionado | Historial claro de cambios de esquema |
+| Rollback | Posibilidad de revertir migraciones |
+| Colaboración | Equipos pueden trabajar en paralelo |
+| Producción | Gestionar esquemas sin perder datos |
+
 ## Patrones Arquitectónicos
 
 ### 1. Clean Architecture & Hexagonal
