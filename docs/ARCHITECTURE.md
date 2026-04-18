@@ -67,6 +67,15 @@ Separación clara entre escritura y lectura:
 - **Decisión**: Uso de colas persistentes en Redis y reintentos en Celery.
 - **Justificación**: Si un servicio externo (RSS o Gemini) falla temporalmente, la tarea no se pierde; se reintenta automáticamente según la política configurada.
 
+## Trade-offs Arquitectónicos
+
+| Decisión | Costo (Complejidad) | Beneficio (Valor Senior) |
+|----------|---------------------|--------------------------|
+| Clean Architecture | Más archivos, más interfaces, curva de aprendizaje inicial. | El dominio es puro Python. No depende de FastAPI ni SQLAlchemy. Fácil de migrar o extraer como librería. |
+| Celery + Redis | Infraestructura adicional (broker), monitoreo más complejo. | Permite reintentos automáticos, scheduling (Beat) y manejo de picos de carga sin bloquear la API. |
+| CQRS (Básico) | Separación de comandos y queries. | Claridad semántica. Los handlers de escritura no se mezclan con lógica de lectura. Preparado para escalado de lectura futuro. |
+| DDD (Entidades/VOs) | Boilerplate inicial para Value Objects. | Validación temprana de datos. Imposible crear un estado inválido en el dominio (ej. email mal formado). |
+
 ## Sistema de Notificaciones
 
 NewsBrief utiliza un adapter de notificaciones para enviar los briefings generados por email:

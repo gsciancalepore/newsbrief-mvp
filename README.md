@@ -7,7 +7,14 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ---
 ## 🏗️ Arquitectura Técnica
+
 El sistema sigue los principios de **Clean Architecture** y **Hexagonal Ports & Adapters**, separando estrictamente las reglas de negocio de los detalles de implementación.
+
+¿Por qué tanta arquitectura para un MVP? Este proyecto no solo busca resolver el problema de negocio (resúmenes de noticias), sino demostrar capacidad de ingeniería de software a escala. La implementación de Clean Architecture, Hexagonal Ports & Adapters y CQRS está diseñada para:
+- **Aislamiento de Dominio**: Permitir cambiar de proveedor de IA (Gemini a OpenAI) o fuente de noticias (RSS a API) sin refactorizar la lógica de negocio.
+- **Escalabilidad Asíncrona**: Desacoplar la generación pesada de IA de la API REST para garantizar latencia <100ms en la interfaz de usuario.
+- **Testabilidad**: Facilitar TDD estricto mediante inyección de dependencias, permitiendo mocks granulares en tests unitarios.
+
 ### Diagrama de Contexto (C4 Level 1)
 ```mermaid
 C4Context

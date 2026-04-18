@@ -88,3 +88,4 @@ C4Container
 - **Adapters**: Son clases Python que viven dentro del proceso del Worker, no son contenedores separados
 - **Celery**: El Worker consume tareas desde Redis (message broker), no directamente de la API
 - **Beat**: Scheduler que publica tareas periódicas a la cola de Redis
+- **Worker como Orquestador**: El Worker está diseñado como un componente orquestador. La separación interna en Adapters (Fetcher, Summarizer, Notifier) permite aplicar el patrón Strategy para futuras fuentes de datos sin modificar el flujo principal de Celery.
