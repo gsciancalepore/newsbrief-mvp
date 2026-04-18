@@ -184,5 +184,55 @@ Cada paso del flujo de generación de briefing es logueado:
 ### Variables de Entorno
 
 | Variable | Descripción | Valor por defecto |
-|----------|-------------|------------------|
+|----------|-------------|-------------------|
 | `ENVIRONMENT` | Modo de ejecución | `development` |
+
+## Concurrencia en Celery Workers
+
+### Problema Original
+
+Al ejecutar tareas de Celery con `concurrency > 1`, se producía el error:
+
+```
+InterfaceError: cannot perform operation: another operation is in progress
+RuntimeError: Event loop is closed
+```
+
+Esto ocurría porque las conexiones asyncpg heredadas del proceso padre (prefork) estaban vinculadas al event loop del proceso padre, que ya no existe en los procesos hijos.
+
+### Solución Implementada
+
+| Componente | Configuración |
+|------------|---------------|
+| **SQLAlchemy** | `poolclass=NullPool` + `pool_pre_ping=True` |
+| **Celery** | `--pool=prefork --concurrency=4` |
+
+### Por qué NullPool?
+
+Para Celery con pool prefork (procesos hijos), el pool de conexiones estándar compartiría conexiones entre procesos padre e hijos. Las conexiones heredadas tienen referencias a un event loop inexistente en el proceso hijo, causando el crash.
+
+NullPool crea una conexión nueva por cada sesión, eliminando completamente este problema:
+- **Aislamiento**: Cada proceso hijo tiene sus propias conexiones
+- **Simplicidad**: No requiere gestión manual de ciclos de vida
+- **Rendimiento**: El overhead es aceptable para workloads I/O-bound (IA, HTTP, DB)
+
+### Configuración de Production
+
+```yaml
+# docker-compose.yml
+command: celery -A src.infrastructure.celery.config.app worker --pool=prefork --concurrency=4 --loglevel=info
+```
+
+```python
+# src/infrastructure/database/config.py
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    poolclass=NullPool,
+    pool_pre_ping=True  # Verifica conexiones antes de usar
+)
+```
+
+### Nota de Rendimiento
+
+El uso de NullPool implica abrir y cerrar una conexión TCP por cada sesión de base de datos. En nuestro caso de uso (I/O bound con llamadas externas a IA y APIs), este overhead es insignificante comparado con el beneficio de estabilidad y aislamiento de procesos. Si en el futuro la carga de DB pura aumenta drásticamente, se podría evaluar volver a QueuePool implementando una fábrica de engines lazy-initializada por proceso.

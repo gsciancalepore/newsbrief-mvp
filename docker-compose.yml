@@ -42,7 +42,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    command: celery -A src.infrastructure.celery.config.app worker --pool=solo --concurrency=1 --loglevel=info
+    command: celery -A src.infrastructure.celery.config.app worker --pool=prefork --concurrency=4 --loglevel=info
     depends_on:
       db:
         condition: service_healthy
