@@ -71,10 +71,14 @@ async def _process_briefing(user_id: UUID):
             )
             await handler.execute(command)
             
+            # 7. Confirmar transacción (Unit of Work - commit fuera del repositorio)
+            await session.commit()
+            
             logger.info(f"Briefing generado y notificado para user {user_id}")
             
         except Exception as e:
             logger.error(f"Error generando briefing para user {user_id}: {e}")
+            await session.rollback()
             raise e
 
 @app.task(name="tasks.trigger_all_users_briefings")

@@ -26,7 +26,4 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=8, minute=0), # Cada día a las 8:00 UTC
     },
 }
-
-# Auto-descubrir tareas si usas una estructura específica, 
-# pero para Clean Architecture es mejor importarlas explícitamente o usar un loader custom.
-# Para este MVP, importaremos las tareas manualmente en __init__.py o aquí.
+from src.infrastructure.celery import tasks

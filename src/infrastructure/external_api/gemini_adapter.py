@@ -1,7 +1,7 @@
 from google import genai
+from google.genai import types
 from typing import List
 import os
-import asyncio
 from src.application.interfaces.ai_service import AISummarizerService
 
 class GeminiSummarizerAdapter(AISummarizerService):
@@ -10,9 +10,14 @@ class GeminiSummarizerAdapter(AISummarizerService):
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY no configurada")
         
-        # --- CAMBIO CLAVE: Nueva forma de inicializar el cliente ---
-        self.client = genai.Client(api_key=self.api_key)
-        self.model_id = 'gemini-1.5-flash'
+        # Cliente sync base
+        self.client = genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(api_version='v1')
+        )
+        # Cliente async nativo (no bloquea event loop)
+        self.async_client = self.client.aio
+        self.model_id = 'gemini-2.5-flash-lite'
 
     async def summarize_news(self, news_items: List[dict], tone: str, language: str = "es") -> str:
         """
@@ -35,9 +40,7 @@ class GeminiSummarizerAdapter(AISummarizerService):
         """
 
         try:
-            # --- CAMBIO CLAVE: Nueva forma de llamar al modelo asíncronamente ---
-            # El nuevo SDK usa models.generate_content
-            response = await self.client.models.generate_content(
+            response = await self.async_client.models.generate_content(
                 model=self.model_id,
                 contents=prompt
             )

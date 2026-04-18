@@ -47,7 +47,7 @@ C4Context
 | Base de Datos | PostgreSQL 16 | Robustez relacional + soporte JSONB para flexibilidad. |
 | ORM | SQLAlchemy Async | Acceso a datos no bloqueante (async/await). |
 | Task Queue | Celery + Redis | Desacoplamiento de tareas pesadas (IA) y scheduling. |
-| IA | Google Gemini 1.5 Flash | Balance costo/velocidad para resumen de textos. |
+| IA | Google Gemini 2.5 Flash-Lite | Balance costo/velocidad para resumen de textos. |
 | Testing | Pytest + AsyncMock | TDD estricto y aislamiento de dependencias externas.
 
 ### Estructura del Proyecto

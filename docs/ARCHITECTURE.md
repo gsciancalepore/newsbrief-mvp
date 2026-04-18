@@ -158,7 +158,13 @@ NewsBrief implementa patrones de resiliencia para garantizar consistencia en ope
 - Errores transitorios (DB, IA, SMTP) se reintentan automáticamente
 - Decorador: `bind=True, autoretry_for=(Exception,), max_retries=3, default_retry_delay=60`
 
-### Environment Check
+### Async Nativo Gemini
+- Usa `client.aio` para llamadas no bloqueantes.
+- Esto evita bloquear el event loop de asyncio durante las llamadas I/O a la API de Google, permitiendo una mayor concurrencia en el worker de Celery.
+- Modelo: `gemini-2.5-flash-lite` (óptimo para velocidad).
+
+### Persistencia (Unit of Work)
+- Se adhiere al patrón Unit of Work: los repositorios solo realizan `flush()` para obtener IDs generados por la DB, mientras que el `commit()` final se gestiona en la capa de aplicación (Celery Task) para garantizar atomicidad y facilitar el testing con rollbacks.
 
 | Environment | Comportamiento SMTP |
 |-------------|-------------------|
