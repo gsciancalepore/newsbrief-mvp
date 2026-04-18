@@ -47,6 +47,8 @@
 - Todos los tests: `pytest -x`
 - Tests unitarios: `pytest tests/unit/ -x`
 - Tests integración: `pytest tests/integration/ -x`
+- Tests integración (excluir concurrency): `pytest tests/integration/ -x -m "not integration"`
+- Test de concurrencia (requiere Docker): `pytest tests/integration/test_concurrent_execution.py -v -m integration`
 - Tests e2e: `pytest tests/e2e/ -x`
 
 ## Convenciones de Código
